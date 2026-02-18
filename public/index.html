@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma Sói Online</title>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+}
+button{
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:6px;
+}
+.player{
+  padding:8px;
+  margin:4px;
+  border:1px solid #444;
+  border-radius:6px;
+}
+.dead{
+  text-decoration: line-through;
+  color:red;
+}
+#chatBox{
+  height:150px;
+  overflow:auto;
+  border:1px solid #444;
+  margin:10px;
+  padding:5px;
+  text-align:left;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🐺 Ma Sói Online</h2>
+
+<div id="login">
+<input id="name" placeholder="Tên của bạn">
+<button onclick="join()">Join</button>
+</div>
+
+<div id="game" style="display:none;">
+
+<h3 id="role"></h3>
+<h3 id="phase"></h3>
+<h1 id="timer"></h1>
+
+<div id="players"></div>
+
+<div id="actionArea"></div>
+
+<div id="chatSection">
+<div id="chatBox"></div>
+<input id="chatInput" placeholder="Nhập tin nhắn">
+<button onclick="sendChat()">Gửi</button>
+</div>
+
+<button onclick="start()">Start Game</button>
+
+</div>
+
+<script>
+const socket = io();
+let myId = null;
+let myRole = null;
+
+function join(){
+  const name = document.getElementById("name").value;
+  if(!name) return alert("Nhập tên!");
+  socket.emit("join", name);
+  document.getElementById("login").style.display="none";
+  document.getElementById("game").style.display="block";
+}
+
+function start(){
+  socket.emit("start");
+}
+
+socket.on("connect", ()=>{
+  myId = socket.id;
+});
+
+socket.on("players", players=>{
+  let html="";
+  players.forEach(p=>{
+    html += `<div id="${p.id}" class="player ${p.alive===false?'dead':''}">
+              ${p.name}
+            </div>`;
+  });
+  document.getElementById("players").innerHTML = html;
+});
+
+socket.on("role", role=>{
+  myRole = role;
+  document.getElementById("role").innerText="Vai của bạn: "+role;
+});
+
+socket.on("phase", phase=>{
+  document.getElementById("phase").innerText=phase;
+  document.getElementById("actionArea").innerHTML="";
+});
+
+socket.on("timer", t=>{
+  document.getElementById("timer").innerText="⏳ "+t;
+});
+
+socket.on("dayResult", victim=>{
+  if(victim){
+    const el=document.getElementById(victim);
+    if(el) el.classList.add("dead");
+  }
+});
+
+socket.on("chat", msg=>{
+  const box=document.getElementById("chatBox");
+  box.innerHTML += "<div>"+msg+"</div>";
+  box.scrollTop=box.scrollHeight;
+});
+
+function sendChat(){
+  const input=document.getElementById("chatInput");
+  if(!input.value) return;
+  socket.emit("chat", input.value);
+  input.value="";
+}
+</script>
+
+</body>
+</html>
